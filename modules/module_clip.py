@@ -363,18 +363,30 @@ class ASTModel(nn.Module):
 #             print('---------------AST Model Summary---------------')
 #             print('ImageNet pretraining: {:s}, AudioSet pretraining: {:s}'.format(str(imagenet_pretrain),str(audioset_pretrain)))
 
-        # override timm input shape restriction
-        timm.models.vision_transformer.PatchEmbed = PatchEmbed
+        available_models = set(timm.list_models())
+        legacy_timm = 'vit_deit_base_distilled_patch16_384' in available_models
+        if legacy_timm:
+            # Old timm has no supported switch for variable input dimensions.
+            timm.models.vision_transformer.PatchEmbed = PatchEmbed
+
+        def create_deit(model_name):
+            if not legacy_timm:
+                model_name = model_name.replace('vit_deit_', 'deit_')
+            model = timm.create_model(model_name, pretrained=imagenet_pretrain)
+            if hasattr(model.patch_embed, 'strict_img_size'):
+                model.patch_embed.strict_img_size = False
+            return model
+
         # if AudioSet pretraining is not used (but ImageNet pretraining may still apply)
         if audioset_pretrain == False:
             if model_size == 'tiny224':
-                self.v = timm.create_model('vit_deit_tiny_distilled_patch16_224', pretrained=imagenet_pretrain)
+                self.v = create_deit('vit_deit_tiny_distilled_patch16_224')
             elif model_size == 'small224':
-                self.v = timm.create_model('vit_deit_small_distilled_patch16_224', pretrained=imagenet_pretrain)
+                self.v = create_deit('vit_deit_small_distilled_patch16_224')
             elif model_size == 'base224':
-                self.v = timm.create_model('vit_deit_base_distilled_patch16_224', pretrained=imagenet_pretrain)
+                self.v = create_deit('vit_deit_base_distilled_patch16_224')
             elif model_size == 'base384':
-                self.v = timm.create_model('vit_deit_base_distilled_patch16_384', pretrained=imagenet_pretrain)
+                self.v = create_deit('vit_deit_base_distilled_patch16_384')
             else:
                 raise Exception('Model size must be one of tiny224, small224, base224, base384.')
             self.original_num_patches = self.v.patch_embed.num_patches
