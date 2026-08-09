@@ -485,10 +485,13 @@ class CLIP4Clip(CLIP4ClipPreTrainedModel):
             sequence_output_ = sequence_output
 
         if self.training:
-            qa_output = allgather(qa_output, self.task_config)
+            # qa_output = allgather(qa_output, self.task_config)
+            qa_output = allgather(qa_output.contiguous(), self.task_config)
             video_mask = allgather(video_mask, self.task_config)
-            sequence_output_ = allgather(sequence_output_, self.task_config)
-            visual_output_original = allgather(visual_output_original, self.task_config)
+            # sequence_output_ = allgather(sequence_output_, self.task_config)
+            # visual_output_original = allgather(visual_output_original, self.task_config)
+            sequence_output_ = allgather(sequence_output_.contiguous(), self.task_config)
+            visual_output_original = allgather(visual_output_original.contiguous(), self.task_config)
             fusion_output = allgather(fusion_output, self.task_config)
             audio_mask = allgather(audio_mask, self.task_config)
             torch.distributed.barrier()
