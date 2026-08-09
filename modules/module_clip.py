@@ -496,9 +496,15 @@ class ASTModel(nn.Module):
         orig_type = x.dtype
 
         for blk in self.v.blocks:
-            # modules in blk: norm1, attn, drop_path, norm2, mlp
-            x = x + blk.drop_path(blk.attn(blk.norm1(x.type(torch.float32)).type(orig_type)))
-            x = x + blk.mlp(blk.norm2(x.type(torch.float32)).type(orig_type))
+            # # modules in blk: norm1, attn, drop_path, norm2, mlp
+            # x = x + blk.drop_path(blk.attn(blk.norm1(x.type(torch.float32)).type(orig_type)))
+            # x = x + blk.mlp(blk.norm2(x.type(torch.float32)).type(orig_type))
+            # modules in blk: norm1, attn, drop_path/drop_path1, norm2, mlp
+            # timm >= 0.5.x renamed drop_path -> drop_path1 / drop_path2
+            _drop_path1 = blk.drop_path1 if hasattr(blk, 'drop_path1') else blk.drop_path
+            _drop_path2 = blk.drop_path2 if hasattr(blk, 'drop_path2') else blk.drop_path
+            x = x + _drop_path1(blk.attn(blk.norm1(x.type(torch.float32)).type(orig_type)))
+            x = x + _drop_path2(blk.mlp(blk.norm2(x.type(torch.float32)).type(orig_type)))
         return torch.cat(((x[:, 0] + x[:, 1]).unsqueeze(1)/ 2, x[:,2:]),1)
 
 
